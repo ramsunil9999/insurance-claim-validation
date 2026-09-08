@@ -85,8 +85,101 @@ public final class PromptTemplates {
 
     }
 
-    public static String buildRecommendationPrompt(
-            ClaimAssessmentContext context) {
+    public static String buildPriorAuthorizationExtractionPrompt(String extractedText) {
+
+        return """
+                You are an expert Healthcare Prior Authorization Document Extraction Assistant.
+                Your task is to extract structured information from the provided Prior Authorization document.
+                Carefully read the entire document and extract every field you can identify.
+
+                Rules:
+                1. Return ONLY valid JSON.
+                2. Never return markdown.
+                3. Never return explanation.
+                4. Never return comments.
+                5. Never return extra text.
+                6. Never guess missing values.
+                7. Return null for missing numeric, date and boolean values.
+                8. Return an empty string ("") only for missing text fields.
+                9. Monetary values should contain numbers only.
+                   Example
+                   $28,500.50 becomes 28500.50
+                10. Dates should be returned in ISO format.
+                    Example
+                    2026-11-12
+                11. Preserve diagnosis exactly as written.
+                12. Preserve procedure names exactly.
+                13. Preserve hospital names exactly.
+                14. Preserve doctor names exactly.
+                15. Preserve policy numbers exactly.
+                16. Preserve member IDs exactly.
+                17. Preserve diagnosis codes exactly.
+                18. Preserve procedure codes exactly.
+                19. If multiple diagnoses exist, use the first as primaryDiagnosis and the remaining as secondaryDiagnosis.
+                20. If multiple procedures exist, combine them into one comma separated string.
+                21. If multiple supporting documents exist, combine them into one comma separated string.
+                22. For conservativeTreatmentAttempted:
+                    return true only if documentation clearly indicates prior treatment was attempted.
+                    return false only if documentation clearly indicates no prior treatment was attempted.
+                    otherwise return null.
+                23. For waitingPeriodStatus: preserve exactly as written.
+                24. For requestType: preserve exactly as written.
+                    Examples:
+                    Standard, Urgent, Expedited
+                25. For facilitySetting: preserve exactly as written.
+                    Examples: 
+                    Inpatient, Outpatient
+
+                Return JSON in EXACTLY this format.
+                {
+                  "patientName":"",
+                  "age":null,
+                  "gender":"",
+
+                  "policyNumber":"",
+                  "memberId":"",
+                  "insurancePlan":"",
+                  "policyStartDate":null,
+                  "waitingPeriodStatus":"",
+
+                  "hospitalName":"",
+                  "hospitalType":"",
+                  "hospitalCity":"",
+
+                  "doctorName":"",
+                  "doctorSpeciality":"",
+
+                  "primaryDiagnosis":"",
+                  "secondaryDiagnosis":"",
+                  "diagnosisCode":"",
+
+                  "requestedProcedure":"",
+                  "procedureCode":"",
+                  "procedureCategory":"",
+                  "treatmentPlan":"",
+
+                  "medicalNecessityReason":"",
+
+                  "conservativeTreatmentAttempted":null,
+                  "previousTreatments":"",
+
+                  "requestType":"",
+                  "facilitySetting":"",
+                  "requestedProcedureDate":null,
+
+                  "estimatedCost":null,
+
+                  "documentsIncluded":"",
+                  "missingDocuments":""
+                }
+
+                DOCUMENT
+                %s
+
+                """.formatted(extractedText);
+    }
+
+    public static String buildRecommendationPrompt(ClaimAssessmentContext context) {
 
         ClaimDetails claim = context.getClaimDetails();
 

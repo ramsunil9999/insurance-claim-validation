@@ -17,6 +17,8 @@ public class PriorAuthorizationValidationServiceImpl implements PriorAuthorizati
 
         List<String> errors = new ArrayList<>();
 
+        validateRequestType(details, errors);
+
         validatePatientName(details, errors);
         validateAge(details, errors);
         validateGender(details, errors);
@@ -36,6 +38,7 @@ public class PriorAuthorizationValidationServiceImpl implements PriorAuthorizati
 
         validateRequestedProcedure(details, errors);
         validateProcedureCategory(details, errors);
+        validateTreatmentPlan(details, errors);
 
         validateMedicalNecessity(details, errors);
 
@@ -47,6 +50,12 @@ public class PriorAuthorizationValidationServiceImpl implements PriorAuthorizati
                 .valid(errors.isEmpty())
                 .errors(errors)
                 .build();
+    }
+
+    private void validateRequestType(PriorAuthorizationDetails details, List<String> errors) {
+        if (isBlank(details.getRequestType())) {
+            errors.add("Request Type is mandatory.");
+        }
     }
 
     private void validatePatientName(PriorAuthorizationDetails details, List<String> errors) {
@@ -134,6 +143,12 @@ public class PriorAuthorizationValidationServiceImpl implements PriorAuthorizati
     private void validateProcedureCategory(PriorAuthorizationDetails details, List<String> errors) {
         if (isBlank(details.getProcedureCategory())) {
             errors.add("Procedure Category is mandatory.");
+        }
+    }
+
+    private void validateTreatmentPlan(PriorAuthorizationDetails details, List<String> errors) {
+        if (isBlank(details.getTreatmentPlan())) {
+            errors.add("Treatment Plan is mandatory.");
         }
     }
 

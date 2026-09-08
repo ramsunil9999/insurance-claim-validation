@@ -4,6 +4,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
 import com.accenture.insuranceclaimvalidation.dto.ClaimDetails;
+import com.accenture.insuranceclaimvalidation.dto.PriorAuthorizationDetails;
 import com.accenture.insuranceclaimvalidation.exception.AIException;
 import com.accenture.insuranceclaimvalidation.service.AIService;
 import com.accenture.insuranceclaimvalidation.util.PromptTemplates;
@@ -22,13 +23,9 @@ public class GroqAIServiceImpl implements AIService {
 
     @Override
     public ClaimDetails extractClaimDetails(String extractedText) {
-
         try {
-
             log.info("Generating extraction prompt.");
-
             String prompt = PromptTemplates.buildClaimExtractionPrompt(extractedText);
-
             String aiResponse = chatClient.prompt()
                     .user(prompt)
                     .call()
@@ -43,27 +40,47 @@ public class GroqAIServiceImpl implements AIService {
             calculateLengthOfStay(claimDetails);
 
             log.info("Claim extraction completed successfully for Policy={}", claimDetails.getPolicyNumber());
-
             return claimDetails;
-
         } catch (Exception ex) {
-
             log.error("Failed to extract claim details.", ex);
-
             throw new AIException("Failed to process AI response.", ex);
-
         }
 
     }
 
-    private String cleanJson(String response) {
+    @Override
+    public PriorAuthorizationDetails extractPriorAuthorizationDetails(String extractedText) {
+        try {
+            log.info("Generating prior authorization extraction prompt.");
 
+            String prompt = PromptTemplates.buildPriorAuthorizationExtractionPrompt(extractedText);
+
+            String aiResponse = chatClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
+
+            log.debug("Raw AI Prior Authorization Response:\n{}", aiResponse);
+
+            aiResponse = cleanJson(aiResponse);
+
+            PriorAuthorizationDetails details = objectMapper.readValue(aiResponse, PriorAuthorizationDetails.class);
+
+            log.info("Prior Authorization extraction completed successfully for Policy={}", details.getPolicyNumber());
+
+            return details;
+
+        } catch (Exception ex) {
+            log.error("Failed to extract Prior Authorization details.", ex);
+            throw new AIException("Failed to process AI response.", ex);
+        }
+    }
+
+    private String cleanJson(String response) {
         if (response == null) {
             return "";
         }
-
-        response = response
-                .replace("```json", "")
+        response = response.replace("```json", "")
                 .replace("```", "")
                 .trim();
 
@@ -73,24 +90,17 @@ public class GroqAIServiceImpl implements AIService {
         if (start >= 0 && end >= start) {
             response = response.substring(start, end + 1);
         }
-
         return response;
-
     }
 
-    private void calculateLengthOfStay(
-            ClaimDetails claimDetails) {
-
+    private void calculateLengthOfStay(ClaimDetails claimDetails) {
         if (claimDetails.getAdmissionDate() == null || claimDetails.getDischargeDate() == null) {
             return;
         }
-
         long days = java.time.temporal.ChronoUnit.DAYS.between(claimDetails.getAdmissionDate(), claimDetails.getDischargeDate());
 
         if (days >= 0) {
             claimDetails.setLengthOfStay((int) days);
         }
-
     }
-
 }
