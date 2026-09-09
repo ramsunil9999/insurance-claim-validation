@@ -105,6 +105,10 @@ public class AIRecommendationServiceImpl implements AIRecommendationService {
                         result.setObservations(List.of());
                 }
 
+                if (result.getRiskFactors() == null) {
+                        result.setRiskFactors(List.of());
+                }
+
                 if (result.getConfidence() == null) {
                         result.setConfidence(0.50);
                 } else {
@@ -123,6 +127,9 @@ public class AIRecommendationServiceImpl implements AIRecommendationService {
                                 .recommendation(Recommendation.MANUAL_REVIEW)
                                 .reason("AI recommendation could not be generated. Manual review required.")
                                 .confidence(0.0)
+                                .riskScore(100)
+                                .riskLevel("HIGH")
+                                .medicalNecessityScore(0.0)
                                 .observations(List.of("AI recommendation service unavailable.", "Claim requires manual assessment."))
                                 .build();
         }

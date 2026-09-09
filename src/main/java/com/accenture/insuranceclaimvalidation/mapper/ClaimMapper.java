@@ -14,6 +14,9 @@ public class ClaimMapper {
 
         return Claim.builder()
 
+            .requestType(claimDetails.getRequestType())
+            .priorAuthorizationId(claimDetails.getPriorAuthorizationId())
+
                 // ===========================
                 // Patient Information
                 // ===========================
@@ -54,6 +57,15 @@ public class ClaimMapper {
                 .symptoms(claimDetails.getSymptoms())
                 .treatmentProvided(claimDetails.getTreatmentProvided())
                 .procedurePerformed(claimDetails.getProcedurePerformed())
+                .requestedProcedure(claimDetails.getRequestedProcedure())
+                .procedureCategory(claimDetails.getProcedureCategory())
+                .estimatedCost(claimDetails.getEstimatedCost())
+                .requestedProcedureDate(claimDetails.getRequestedProcedureDate())
+                .treatmentPlan(claimDetails.getTreatmentPlan())
+                .referralDoctor(claimDetails.getReferralDoctor())
+                .referringProvider(claimDetails.getReferringProvider())
+                .policyStartDate(claimDetails.getPolicyStartDate())
+                .missingDocuments(claimDetails.getMissingDocuments())
                 .surgeryPerformed(claimDetails.getSurgeryPerformed())
                 .icuRequired(claimDetails.getIcuRequired())
 
@@ -92,9 +104,18 @@ public class ClaimMapper {
         claim.setRecommendationReason(recommendationResult.getReason());
         claim.setConfidence(recommendationResult.getConfidence());
         claim.setObservations(recommendationResult.getObservations());
+        claim.setRiskScore(recommendationResult.getRiskScore());
+        claim.setRiskLevel(recommendationResult.getRiskLevel());
+        claim.setMedicalNecessityScore(recommendationResult.getMedicalNecessityScore());
+        claim.setCoverageStatus(recommendationResult.getCoverageStatus());
+        claim.setWaitingPeriodSatisfied(recommendationResult.getWaitingPeriodSatisfied());
+        claim.setDuplicateDetected(duplicate);
+        claim.setPriorAuthorizationMatched(recommendationResult.getPriorAuthorizationMatched());
 
         claim.setStatus(duplicate
-                        ? ClaimStatus.DUPLICATE
-                        : ClaimStatus.VALID);
+                ? ClaimStatus.DUPLICATE
+                : recommendationResult.getRecommendation() == com.accenture.insuranceclaimvalidation.enums.Recommendation.MANUAL_REVIEW
+                    ? ClaimStatus.MANUAL_REVIEW
+                    : ClaimStatus.VALID);
     }
 }

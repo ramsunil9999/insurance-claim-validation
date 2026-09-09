@@ -3,6 +3,7 @@ package com.accenture.insuranceclaimvalidation.enums;
 public enum ClaimStatus {
 
     VALID,
-    DUPLICATE
+    DUPLICATE,
+    MANUAL_REVIEW
 
 }

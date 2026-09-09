@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import com.accenture.insuranceclaimvalidation.enums.ClaimStatus;
 import com.accenture.insuranceclaimvalidation.enums.Recommendation;
+import com.accenture.insuranceclaimvalidation.enums.RequestType;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +24,10 @@ public class Claim {
 
     @Id
     private String id;
+
+    private RequestType requestType;
+
+    private String priorAuthorizationId;
 
     // ===========================
     // Patient Information
@@ -75,6 +80,22 @@ public class Claim {
     private String treatmentProvided;
 
     private String procedurePerformed;
+
+    private String requestedProcedure;
+
+    private String procedureCategory;
+
+    private Double estimatedCost;
+
+    private LocalDate requestedProcedureDate;
+
+    private String treatmentPlan;
+
+    private String referralDoctor;
+
+    private String referringProvider;
+
+    private LocalDate policyStartDate;
 
     private Boolean surgeryPerformed;
 
@@ -131,4 +152,20 @@ public class Claim {
     private Double confidence;
 
     private List<String> observations;
+
+    private Integer riskScore;
+
+    private String riskLevel;
+
+    private Double medicalNecessityScore;
+
+    private String coverageStatus;
+
+    private Boolean waitingPeriodSatisfied;
+
+    private Boolean duplicateDetected;
+
+    private Boolean priorAuthorizationMatched;
+
+    private List<String> missingDocuments;
 }

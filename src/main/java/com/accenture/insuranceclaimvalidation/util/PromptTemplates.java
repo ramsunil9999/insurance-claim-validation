@@ -36,9 +36,17 @@ public final class PromptTemplates {
                 14. Preserve policy numbers exactly.
                 15. If multiple diagnoses exist, use the first as diagnosis and remaining as secondaryDiagnosis.
                 16. If multiple procedures exist, combine them into one comma separated string.
+                17. Set requestType to PRIOR_AUTH for a request before treatment; otherwise set it to CLAIM.
+                18. Report missing supporting documents using only: MRI Reports, Lab Reports, Diagnostic Reports, Doctor Recommendation.
+                19. Determine missingDocuments only from documents that are clinically relevant to the detected requestType.
+                20. For PRIOR_AUTH, do not treat admission, discharge, length of stay, performed procedure, claim amount, actual charge breakdown, ICU, or emergency admission as missing documents or extraction failures.
+                21. For CLAIM, do not treat requested procedure, treatment plan, estimated cost, referral information, or requested procedure date as missing documents or extraction failures when the claim document does not contain them.
+                22. A blank field is not automatically a missing document. Add an item to missingDocuments only when the document explicitly indicates that a required supporting report or recommendation is absent.
 
                 Return JSON in EXACTLY this format.
                 {
+                  "requestType":"CLAIM | PRIOR_AUTH",
+                  "priorAuthorizationId":"",
                   "patientName":"",
                   "age":null,
                   "gender":"",
@@ -59,6 +67,14 @@ public final class PromptTemplates {
                   "symptoms":"",
                   "treatmentProvided":"",
                   "procedurePerformed":"",
+                  "requestedProcedure":"",
+                  "procedureCategory":"",
+                  "estimatedCost":null,
+                  "requestedProcedureDate":null,
+                  "treatmentPlan":"",
+                  "referralDoctor":"",
+                  "referringProvider":"",
+                  "policyStartDate":null,
 
                   "surgeryPerformed":null,
                   "icuRequired":null,
@@ -75,7 +91,8 @@ public final class PromptTemplates {
                   "doctorConsultationCharges":null,
 
                   "emergencyAdmission":null,
-                  "previousSimilarClaims":null
+                  "previousSimilarClaims":null,
+                  "missingDocuments":[]
                 }
 
                 DOCUMENT
@@ -92,13 +109,9 @@ public final class PromptTemplates {
 
         return """
                 You are a Senior Health Insurance Medical Claim Assessor working for Cigna Healthcare in the United States.
-
                 You have over twenty years of experience evaluating medical insurance claims.
-
                 Your responsibility is to determine whether the submitted claim should be APPROVED, sent for MANUAL_REVIEW, or REJECTED.
-
                 Your objective is NOT to reject claims.
-
                 Your objective is to fairly determine whether the complete claim appears medically, financially and administratively legitimate.
 
                 -------------------------------------------------------
@@ -108,6 +121,42 @@ public final class PromptTemplates {
                 Never base your decision on only one field.
                 Always consider the complete medical story.
                 When uncertain, prefer MANUAL_REVIEW instead of REJECTED.
+
+                -------------------------------------------------------
+                REQUEST-TYPE-SPECIFIC SCOPE
+                -------------------------------------------------------
+                The REQUEST TYPE controls which fields are applicable. Never report an inapplicable field as missing and never lower medical necessity because an inapplicable field is empty.
+
+                For PRIOR_AUTH (before treatment or admission):
+                • Evaluate diagnosis, symptoms, treatment plan, requested procedure, procedure category, estimated cost, requested procedure date, referral information, doctor specialty, hospital capability, coverage, and waiting period when policy dates are available.
+                • Do NOT require or flag admission date, discharge date, length of stay, procedure performed, claim amount, room charges, medicine charges, lab charges, procedure charges, doctor consultation charges, ICU requirement, or emergency admission. These describe treatment that has not happened yet.
+                • Do NOT report missing financial charge breakdown as a risk. Use estimatedCost for the authorization financial assessment.
+                • Do NOT report a missing performed procedure. Use requestedProcedure as the procedure under review.
+
+                For CLAIM (after treatment):
+                • Evaluate diagnosis, symptoms, treatment provided, procedure performed, admission and discharge dates, length of stay, actual charges, claim amount, ICU, emergency admission, duplicate history, coverage, and prior-authorization matching when an authorization ID is present.
+                • Do NOT require or flag requested procedure, treatment plan, estimated cost, referral information, or requested procedure date when they are not part of the submitted claim.
+
+                When a field is out of scope for the request type, exclude it from riskFactors, observations, missing-document findings, and the recommendation reason.
+
+                -------------------------------------------------------
+                STRUCTURED CLINICAL CONSISTENCY ASSESSMENT
+                -------------------------------------------------------
+                Independently assess every relationship below using the complete clinical context, not keyword equality.
+                First normalize the terms: recognize standard medical synonyms, abbreviations, translated terms, and equivalent procedure names. For example, expand abbreviations before comparing meaning.
+                Then follow this sequence for EACH check:
+                1. Identify the body system, condition, clinical indication, and severity described by the diagnosis and symptoms.
+                2. Identify the clinical purpose, body system, invasiveness, and complexity of the requested or performed procedure. For PRIOR_AUTH use Requested Procedure as the primary procedure field; for CLAIM use Procedure Performed. Use the other procedure field only as corroborating evidence.
+                3. Compare clinical meaning, not spelling or shared words.
+                4. Decide true when the documented evidence supports a medically plausible relationship.
+                5. Decide false only when the documented evidence supports a contradiction or clinically implausible relationship. Do not use false merely because the case is complex, the procedure is major, or a detail is unfamiliar.
+                6. Decide null only when a required fact is genuinely absent or too vague to assess. Null means NOT_ASSESSED, never ALIGNED and never MISMATCH.
+                procedureDiagnosisValid is about whether the diagnosis, symptoms, treatment plan or treatment provided, and requested or performed procedure are clinically coherent.
+                doctorSpecialtyValid is true when the documented specialty is a recognized specialty for managing the relevant condition or delivering the documented procedure. A specialty need not be named identically to the diagnosis; use the specialty's accepted scope of practice.
+                hospitalCapabilityValid is true when the documented hospital type and available level of care are reasonably capable of delivering the procedure. A tertiary, multi-specialty, or referral facility is evidence of capability for complex procedures unless the document provides contrary evidence. Do not mark a facility false merely because a specific equipment list is absent.
+                A clearly matching diagnosis, procedure, specialty, and appropriately capable facility must be marked true even when the procedure is high risk or expensive. High risk is not the same as inconsistency.
+                Explain each false or null assessment in riskFactors. Do not invent facts, diagnoses, specialties, or facility capabilities.
+                Do not reject or send a medically coherent case to MANUAL_REVIEW solely because an assessment is difficult; use MANUAL_REVIEW for unresolved evidence, administrative issues, or other material risk factors.
 
                 -------------------------------------------------------
                 MEDICAL CONSISTENCY
@@ -196,6 +245,9 @@ public final class PromptTemplates {
                 -------------------------------------------------------
                 CLAIM DETAILS
                 -------------------------------------------------------
+                REQUEST TYPE : %s
+                Prior Authorization ID : %s
+
                 PATIENT INFORMATION
                 Patient Name : %s
                 Age : %s
@@ -221,10 +273,18 @@ public final class PromptTemplates {
                 Symptoms : %s
                 Treatment Provided : %s
                 Procedure Performed : %s
+                Requested Procedure : %s
+                Procedure Category : %s
+                Estimated Cost : %s
+                Requested Procedure Date : %s
+                Treatment Plan : %s
+                Referral Doctor : %s
+                Referring Provider : %s
                 Surgery Performed : %s
                 ICU Required : %s
 
                 HOSPITALIZATION
+                Policy Start Date : %s
                 Admission Date : %s
                 Discharge Date : %s
                 Length Of Stay : %s
@@ -240,10 +300,19 @@ public final class PromptTemplates {
                 ADDITIONAL INFORMATION
                 Emergency Admission : %s
                 Previous Similar Claims : %s
+                Missing Documents : %s
 
                 VALIDATION
                 Validation Passed : %s
                 Duplicate Claim : %s
+                Procedure Diagnosis Valid : %s
+                Doctor Specialty Valid : %s
+                Hospital Capability Valid : %s
+                Coverage Status : %s
+                Waiting Period Satisfied : %s
+                Medical Necessity Score : %s
+                Risk Score : %s
+                Risk Level : %s
 
                 -------------------------------------------------------
                 DECISION RULES
@@ -282,6 +351,17 @@ public final class PromptTemplates {
                     "recommendation":"APPROVED | MANUAL_REVIEW | REJECTED",
                     "reason":"Business explanation",
                     "confidence":0.95,
+                    "riskScore":0,
+                    "riskLevel":"LOW",
+                    "medicalNecessityScore":0.0,
+                    "coverageStatus":"COVERED",
+                    "waitingPeriodSatisfied":null,
+                    "duplicateDetected":false,
+                    "priorAuthorizationMatched":true,
+                    "procedureDiagnosisValid":null,
+                    "doctorSpecialtyValid":null,
+                    "hospitalCapabilityValid":null,
+                    "riskFactors":[],
                     "observations":[
                         "...",
                         "...",
@@ -293,6 +373,8 @@ public final class PromptTemplates {
                         // ===========================
                         // Patient Information
                         // ===========================
+                        claim.getRequestType(),
+                        claim.getPriorAuthorizationId(),
                         claim.getPatientName(),
                         claim.getAge(),
                         claim.getGender(),
@@ -325,12 +407,20 @@ public final class PromptTemplates {
                         claim.getSymptoms(),
                         claim.getTreatmentProvided(),
                         claim.getProcedurePerformed(),
+                        claim.getRequestedProcedure(),
+                        claim.getProcedureCategory(),
+                        claim.getEstimatedCost(),
+                        claim.getRequestedProcedureDate(),
+                        claim.getTreatmentPlan(),
+                        claim.getReferralDoctor(),
+                        claim.getReferringProvider(),
                         claim.getSurgeryPerformed(),
                         claim.getIcuRequired(),
 
                         // ===========================
                         // Hospitalization
                         // ===========================
+                        claim.getPolicyStartDate(),
                         claim.getAdmissionDate(),
                         claim.getDischargeDate(),
                         claim.getLengthOfStay(),
@@ -350,12 +440,22 @@ public final class PromptTemplates {
                         // ===========================
                         claim.getEmergencyAdmission(),
                         claim.getPreviousSimilarClaims(),
+                        claim.getMissingDocuments(),
 
                         // ===========================
                         // Validation
                         // ===========================
                         context.getValidationResult().isValid(),
-                        context.isDuplicateClaim());
+                        context.isDuplicateClaim(),
+                        context.getValidationResult().getProcedureDiagnosisValid(),
+                        context.getValidationResult().getDoctorSpecialtyValid(),
+                        context.getValidationResult().getHospitalCapabilityValid(),
+                        context.getValidationResult().getCoverageStatus(),
+                        context.getValidationResult().getWaitingPeriodSatisfied(),
+                        context.getValidationResult().getMedicalNecessityScore(),
+                        context.getValidationResult().getRiskScore(),
+                        context.getValidationResult().getRiskLevel()
+                    );
     }
 
 }

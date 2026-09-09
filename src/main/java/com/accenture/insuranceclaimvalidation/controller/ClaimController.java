@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.accenture.insuranceclaimvalidation.dto.response.FileUploadResponse;
+import com.accenture.insuranceclaimvalidation.enums.RequestType;
 import com.accenture.insuranceclaimvalidation.service.ClaimService;
 
 @RestController
@@ -24,8 +25,9 @@ public class ClaimController {
 
     @PostMapping("/upload")
     public ResponseEntity<FileUploadResponse> uploadClaim(
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "requestType", defaultValue = "CLAIM") RequestType requestType) {
 
-        return ResponseEntity.ok(claimService.uploadClaim(file));
+        return ResponseEntity.ok(claimService.uploadClaim(file, requestType));
     }
 }

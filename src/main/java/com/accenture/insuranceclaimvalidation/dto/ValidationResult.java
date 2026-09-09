@@ -17,4 +17,28 @@ public class ValidationResult {
 
     private List<String> errors;
 
+    private Integer riskScore;
+
+    private String riskLevel;
+
+    private Double medicalNecessityScore;
+
+    private String coverageStatus;
+
+    private Boolean waitingPeriodSatisfied;
+
+    private Boolean duplicateDetected;
+
+    private Boolean procedureDiagnosisValid;
+
+    private Boolean doctorSpecialtyValid;
+
+    private Boolean hospitalCapabilityValid;
+
+    private Boolean priorAuthorizationMatched;
+
+    private List<String> missingDocuments;
+
+    private List<String> riskFactors;
+
 }

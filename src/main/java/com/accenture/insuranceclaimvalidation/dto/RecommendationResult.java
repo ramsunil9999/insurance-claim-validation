@@ -25,4 +25,26 @@ public class RecommendationResult {
 
     private List<String> observations;
 
+    private Integer riskScore;
+
+    private String riskLevel;
+
+    private Double medicalNecessityScore;
+
+    private String coverageStatus;
+
+    private Boolean waitingPeriodSatisfied;
+
+    private Boolean duplicateDetected;
+
+    private Boolean priorAuthorizationMatched;
+
+    private Boolean procedureDiagnosisValid;
+
+    private Boolean doctorSpecialtyValid;
+
+    private Boolean hospitalCapabilityValid;
+
+    private List<String> riskFactors;
+
 }

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import com.accenture.insuranceclaimvalidation.dto.ClaimDetails;
 import com.accenture.insuranceclaimvalidation.dto.ValidationResult;
 import com.accenture.insuranceclaimvalidation.service.validation.ClaimValidationService;
+import com.accenture.insuranceclaimvalidation.enums.RequestType;
 
 @Service
 public class ClaimValidationServiceImpl implements ClaimValidationService {
@@ -35,26 +36,79 @@ public class ClaimValidationServiceImpl implements ClaimValidationService {
         validateDoctorSpeciality(claimDetails, errors);
 
         validateDiagnosis(claimDetails, errors);
-        validateTreatment(claimDetails, errors);
+        if (isPriorAuth(claimDetails)) {
+            validatePriorAuthorizationFields(claimDetails, errors);
+        } else {
+            validateTreatment(claimDetails, errors);
+        }
 
-        validateAdmissionDate(claimDetails, errors);
-        validateDischargeDate(claimDetails, errors);
-        validateDateSequence(claimDetails, errors);
-        validateLengthOfStay(claimDetails, errors);
+        if (!isPriorAuth(claimDetails)) {
+            validateAdmissionDate(claimDetails, errors);
+            validateDischargeDate(claimDetails, errors);
+            validateDateSequence(claimDetails, errors);
+            validateLengthOfStay(claimDetails, errors);
+        }
 
-        validateClaimAmount(claimDetails, errors);
-        validateRoomCharges(claimDetails, errors);
-        validateMedicineCharges(claimDetails, errors);
-        validateLabCharges(claimDetails, errors);
-        validateProcedureCharges(claimDetails, errors);
-        validateDoctorConsultationCharges(claimDetails, errors);
+        if (isPriorAuth(claimDetails)) {
+            validateEstimatedCost(claimDetails, errors);
+        } else {
+            validateClaimAmount(claimDetails, errors);
+            validateRoomCharges(claimDetails, errors);
+            validateMedicineCharges(claimDetails, errors);
+            validateLabCharges(claimDetails, errors);
+            validateProcedureCharges(claimDetails, errors);
+            validateDoctorConsultationCharges(claimDetails, errors);
 
-        validateFinancialConsistency(claimDetails, errors);
+            validateFinancialConsistency(claimDetails, errors);
+        }
+
+        List<String> riskFactors = new ArrayList<>();
+        addMissingDocumentErrors(claimDetails, errors);
 
         return ValidationResult.builder()
                 .valid(errors.isEmpty())
                 .errors(errors)
+            .riskScore(null)
+            .riskLevel(null)
+            .medicalNecessityScore(null)
+            .coverageStatus(null)
+            .waitingPeriodSatisfied(null)
+                .duplicateDetected(false)
+            .procedureDiagnosisValid(null)
+            .doctorSpecialtyValid(null)
+            .hospitalCapabilityValid(null)
+                .priorAuthorizationMatched(null)
+                .missingDocuments(claimDetails.getMissingDocuments() == null ? List.of() : claimDetails.getMissingDocuments())
+                .riskFactors(riskFactors)
                 .build();
+    }
+
+    private boolean isPriorAuth(ClaimDetails claimDetails) {
+        return claimDetails.getRequestType() == RequestType.PRIOR_AUTH;
+    }
+
+    private void validatePriorAuthorizationFields(ClaimDetails claimDetails, List<String> errors) {
+        if (isBlank(claimDetails.getRequestedProcedure())) {
+            errors.add("Requested Procedure is mandatory for prior authorization.");
+        }
+        if (claimDetails.getRequestedProcedureDate() == null) {
+            errors.add("Requested Procedure Date is mandatory for prior authorization.");
+        }
+        if (isBlank(claimDetails.getTreatmentPlan()) && isBlank(claimDetails.getTreatmentProvided())) {
+            errors.add("Treatment Plan is mandatory for prior authorization.");
+        }
+    }
+
+    private void validateEstimatedCost(ClaimDetails claimDetails, List<String> errors) {
+        if (claimDetails.getEstimatedCost() != null && claimDetails.getEstimatedCost() <= 0) {
+            errors.add("Estimated Cost must be greater than zero.");
+        }
+    }
+
+    private void addMissingDocumentErrors(ClaimDetails claimDetails, List<String> errors) {
+        if (claimDetails.getMissingDocuments() != null && !claimDetails.getMissingDocuments().isEmpty()) {
+            errors.add("NEED_MORE_INFORMATION: Missing documents - " + String.join(", ", claimDetails.getMissingDocuments()));
+        }
     }
 
     private void validatePatientName(ClaimDetails claimDetails, List<String> errors) {

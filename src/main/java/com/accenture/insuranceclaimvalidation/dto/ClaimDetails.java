@@ -2,6 +2,8 @@ package com.accenture.insuranceclaimvalidation.dto;
 
 import java.time.LocalDate;
 
+import com.accenture.insuranceclaimvalidation.enums.RequestType;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,6 +14,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ClaimDetails {
+
+    private RequestType requestType;
+
+    private String priorAuthorizationId;
 
     // ===========================
     // Patient Information
@@ -64,6 +70,24 @@ public class ClaimDetails {
     private String treatmentProvided;
 
     private String procedurePerformed;
+
+    private String requestedProcedure;
+
+    private String procedureCategory;
+
+    private Double estimatedCost;
+
+    private LocalDate requestedProcedureDate;
+
+    private String treatmentPlan;
+
+    private String referralDoctor;
+
+    private String referringProvider;
+
+    private LocalDate policyStartDate;
+
+    private java.util.List<String> missingDocuments;
 
     private Boolean surgeryPerformed;
 
