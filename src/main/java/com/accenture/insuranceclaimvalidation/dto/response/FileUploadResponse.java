@@ -1,6 +1,7 @@
 package com.accenture.insuranceclaimvalidation.dto.response;
 
 import com.accenture.insuranceclaimvalidation.dto.ClaimDetails;
+import com.accenture.insuranceclaimvalidation.dto.PriorAuthorizationDetails;
 import com.accenture.insuranceclaimvalidation.dto.RecommendationResult;
 import com.accenture.insuranceclaimvalidation.dto.ValidationResult;
 
@@ -28,6 +29,8 @@ public class FileUploadResponse {
     private String extractedText;
 
     private ClaimDetails claimDetails;
+
+    private PriorAuthorizationDetails priorAuthorizationDetails;
 
     private ValidationResult validationResult;
 

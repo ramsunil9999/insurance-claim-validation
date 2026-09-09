@@ -2,6 +2,8 @@ package com.accenture.insuranceclaimvalidation.util;
 
 import com.accenture.insuranceclaimvalidation.dto.ClaimAssessmentContext;
 import com.accenture.insuranceclaimvalidation.dto.ClaimDetails;
+import com.accenture.insuranceclaimvalidation.dto.PriorAuthorizationAssessmentContext;
+import com.accenture.insuranceclaimvalidation.dto.PriorAuthorizationDetails;
 
 public final class PromptTemplates {
 
@@ -127,7 +129,7 @@ public final class PromptTemplates {
                     Examples:
                     Standard, Urgent, Expedited
                 25. For facilitySetting: preserve exactly as written.
-                    Examples: 
+                    Examples:
                     Inpatient, Outpatient
 
                 Return JSON in EXACTLY this format.
@@ -176,22 +178,19 @@ public final class PromptTemplates {
                 DOCUMENT
                 %s
 
-                """.formatted(extractedText);
+                """
+                .formatted(extractedText);
     }
 
-    public static String buildRecommendationPrompt(ClaimAssessmentContext context) {
+    public static String buildClaimRecommendationPrompt(ClaimAssessmentContext context) {
 
         ClaimDetails claim = context.getClaimDetails();
 
         return """
                 You are a Senior Health Insurance Medical Claim Assessor working for Cigna Healthcare in the United States.
-
                 You have over twenty years of experience evaluating medical insurance claims.
-
                 Your responsibility is to determine whether the submitted claim should be APPROVED, sent for MANUAL_REVIEW, or REJECTED.
-
                 Your objective is NOT to reject claims.
-
                 Your objective is to fairly determine whether the complete claim appears medically, financially and administratively legitimate.
 
                 -------------------------------------------------------
@@ -451,4 +450,181 @@ public final class PromptTemplates {
                         context.isDuplicateClaim());
     }
 
+    public static String buildPriorAuthorizationRecommendationPrompt(PriorAuthorizationAssessmentContext context) {
+
+        PriorAuthorizationDetails priorAuth = context.getPriorAuthorizationDetails();
+
+        return """
+                You are a Senior Health Insurance Prior Authorization Reviewer working for Cigna Healthcare in the United States.
+                Your responsibility is to evaluate whether the requested procedure should be APPROVED, sent for MANUAL_REVIEW, or REJECTED.
+
+                -------------------------------------------------------
+                GENERAL PRINCIPLES
+                -------------------------------------------------------
+                - Evaluate the entire authorization request.
+                - Never make decisions using only one field.
+                - Prefer MANUAL_REVIEW when uncertainty exists.
+
+                -------------------------------------------------------
+                MEDICAL NECESSITY
+                -------------------------------------------------------
+                Evaluate whether:
+                • requested procedure is justified
+                • diagnosis supports requested procedure
+                • treatment plan is medically appropriate
+                • doctor specialty matches diagnosis
+                • procedure category is appropriate
+
+                -------------------------------------------------------
+                PRIOR TREATMENT EVALUATION
+                -------------------------------------------------------
+                Evaluate whether:
+                • conservative treatments were attempted
+                • previous treatments support escalation
+                • requested procedure appears medically justified
+
+                -------------------------------------------------------
+                ADMINISTRATIVE CONSISTENCY
+                -------------------------------------------------------
+                Evaluate:
+                • policy information
+                • member information
+                • missing required fields
+                • missing supporting documents
+
+                -------------------------------------------------------
+                COST EVALUATION
+                -------------------------------------------------------
+                Evaluate whether estimated cost appears reasonably aligned with diagnosis, procedure and provider type.
+
+                -------------------------------------------------------
+                PRIOR AUTHORIZATION DETAILS
+                -------------------------------------------------------
+                Patient Name : %s
+                Age : %s
+                Gender : %s
+
+                Policy Number : %s
+                Member ID : %s
+                Insurance Plan : %s
+
+                Hospital Name : %s
+                Hospital Type : %s
+                Hospital City : %s
+
+                Doctor Name : %s
+                Doctor Specialty : %s
+
+                Primary Diagnosis : %s
+                Secondary Diagnosis : %s
+                Diagnosis Code : %s
+
+                Requested Procedure : %s
+                Procedure Code : %s
+                Procedure Category : %s
+
+                Treatment Plan : %s
+
+                Medical Necessity Reason : %s
+                Conservative Treatment Attempted : %s
+                Previous Treatments : %s
+                Request Type : %s
+                Facility Setting : %s
+                Requested Procedure Date : %s
+
+                Estimated Cost : %s
+
+                Documents Included : %s
+                Missing Documents : %s
+
+                Validation Passed : %s
+
+                -------------------------------------------------------
+                DECISION RULES
+                -------------------------------------------------------
+                APPROVED
+                Approve when:
+                • diagnosis supports requested procedure
+                • medical necessity is documented
+                • treatment plan is appropriate
+                • no major missing information exists
+
+                MANUAL_REVIEW
+                Choose MANUAL_REVIEW when:
+                • supporting documents are missing
+                • medical necessity is unclear
+                • incomplete information exists
+                • multiple interpretations are reasonable
+
+                REJECTED
+                Reject only when:
+                • requested procedure clearly contradicts diagnosis
+                • strong evidence exists that procedure is medically unnecessary
+                • multiple severe inconsistencies exist
+
+                -------------------------------------------------------
+                OUTPUT
+                -------------------------------------------------------
+                Return ONLY valid JSON.
+                Never return markdown.
+                Never return explanation.
+                Never return ```json.
+                {
+                    "recommendation":"APPROVED | MANUAL_REVIEW | REJECTED",
+                    "reason":"Business explanation",
+                    "confidence":0.95,
+                    "observations":[
+                        "...",
+                        "...",
+                        "..."
+                    ]
+                }
+                """
+                .formatted(
+                        priorAuth.getPatientName(),
+                        priorAuth.getAge(),
+                        priorAuth.getGender(),
+
+                        priorAuth.getPolicyNumber(),
+                        priorAuth.getMemberId(),
+                        priorAuth.getInsurancePlan(),
+
+                        priorAuth.getHospitalName(),
+                        priorAuth.getHospitalType(),
+                        priorAuth.getHospitalCity(),
+
+                        priorAuth.getDoctorName(),
+                        priorAuth.getDoctorSpeciality(),
+
+                        priorAuth.getPrimaryDiagnosis(),
+                        priorAuth.getSecondaryDiagnosis(),
+                        priorAuth.getDiagnosisCode(),
+
+                        priorAuth.getRequestedProcedure(),
+                        priorAuth.getProcedureCode(),
+                        priorAuth.getProcedureCategory(),
+
+                        priorAuth.getTreatmentPlan(),
+
+                        priorAuth.getMedicalNecessityReason(),
+
+                        priorAuth.getConservativeTreatmentAttempted(),
+
+                        priorAuth.getPreviousTreatments(),
+
+                        priorAuth.getRequestType(),
+
+                        priorAuth.getFacilitySetting(),
+
+                        priorAuth.getRequestedProcedureDate(),
+
+                        priorAuth.getEstimatedCost(),
+
+                        priorAuth.getDocumentsIncluded(),
+
+                        priorAuth.getMissingDocuments(),
+
+                        context.getValidationResult().isValid()
+                    );
+    }
 }

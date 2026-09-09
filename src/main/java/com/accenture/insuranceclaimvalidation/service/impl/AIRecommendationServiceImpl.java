@@ -6,6 +6,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
 import com.accenture.insuranceclaimvalidation.dto.ClaimAssessmentContext;
+import com.accenture.insuranceclaimvalidation.dto.PriorAuthorizationAssessmentContext;
 import com.accenture.insuranceclaimvalidation.dto.RecommendationResult;
 import com.accenture.insuranceclaimvalidation.enums.Recommendation;
 import com.accenture.insuranceclaimvalidation.service.AIRecommendationService;
@@ -29,9 +30,10 @@ public class AIRecommendationServiceImpl implements AIRecommendationService {
 
                 long startTime = System.currentTimeMillis();
                 try {
-                        String prompt = PromptTemplates.buildRecommendationPrompt(context);
+                        String prompt = PromptTemplates.buildClaimRecommendationPrompt(context);
 
-                        log.info("Generating AI recommendation for Policy Number: {}", context.getClaimDetails().getPolicyNumber());
+                        log.info("Generating AI recommendation for Policy Number: {}",
+                                        context.getClaimDetails().getPolicyNumber());
 
                         String aiResponse = chatClient.prompt()
                                         .user(prompt)
@@ -42,24 +44,69 @@ public class AIRecommendationServiceImpl implements AIRecommendationService {
 
                         String cleanedResponse = cleanJson(aiResponse);
 
-                        RecommendationResult result = objectMapper.readValue(cleanedResponse,RecommendationResult.class);
+                        RecommendationResult result = objectMapper.readValue(cleanedResponse,
+                                        RecommendationResult.class);
 
                         validateRecommendation(result);
 
                         long endTime = System.currentTimeMillis();
 
                         log.info("Recommendation Generated Successfully | Policy={} | Recommendation={} | Confidence={} | Time={} ms",
-                                        context.getClaimDetails().getPolicyNumber(), result.getRecommendation(), result.getConfidence(), (endTime - startTime));
+                                        context.getClaimDetails().getPolicyNumber(), result.getRecommendation(),
+                                        result.getConfidence(), (endTime - startTime));
 
                         return result;
 
                 } catch (Exception ex) {
-                        log.error("Failed to generate AI recommendation for Policy Number: {}", context.getClaimDetails().getPolicyNumber(), ex);
+                        log.error("Failed to generate AI recommendation for Policy Number: {}",
+                                        context.getClaimDetails().getPolicyNumber(), ex);
 
                         return buildFallbackRecommendation();
 
                 }
 
+        }
+
+        @Override
+        public RecommendationResult recommendPriorAuthorization(PriorAuthorizationAssessmentContext context) {
+
+                long startTime = System.currentTimeMillis();
+                try {
+                        String prompt = PromptTemplates.buildPriorAuthorizationRecommendationPrompt(context);
+
+                        log.info("Generating AI prior authorization recommendation for Policy Number: {}",
+                                        context.getPriorAuthorizationDetails().getPolicyNumber());
+
+                        String aiResponse = chatClient.prompt()
+                                        .user(prompt)
+                                        .call()
+                                        .content();
+
+                        log.debug("Raw AI Prior Authorization Recommendation Response: {}", aiResponse);
+
+                        String cleanedResponse = cleanJson(aiResponse);
+
+                        RecommendationResult result = objectMapper.readValue(cleanedResponse,
+                                        RecommendationResult.class);
+
+                        validateRecommendation(result);
+
+                        long endTime = System.currentTimeMillis();
+
+                        log.info("Prior Authorization Recommendation Generated Successfully" + " | Policy={}"
+                                        + " | Recommendation={}" + " | Confidence={}" + " | Time={} ms",
+                                        context.getPriorAuthorizationDetails().getPolicyNumber(),
+                                        result.getRecommendation(),
+                                        result.getConfidence(), (endTime - startTime));
+
+                        return result;
+
+                } catch (Exception ex) {
+                        log.error("Failed to generate Prior Authorization recommendation" + " for Policy Number: {}",
+                                        context.getPriorAuthorizationDetails().getPolicyNumber(), ex);
+
+                        return buildPriorAuthorizationFallbackRecommendation();
+                }
         }
 
         /**
@@ -91,7 +138,9 @@ public class AIRecommendationServiceImpl implements AIRecommendationService {
          * Ensures recommendation response is usable.
          */
         private void validateRecommendation(RecommendationResult result) {
-                if (result == null) { throw new IllegalStateException("Recommendation response is null."); }
+                if (result == null) {
+                        throw new IllegalStateException("Recommendation response is null.");
+                }
 
                 if (result.getRecommendation() == null) {
                         result.setRecommendation(Recommendation.MANUAL_REVIEW);
@@ -124,6 +173,16 @@ public class AIRecommendationServiceImpl implements AIRecommendationService {
                                 .reason("AI recommendation could not be generated. Manual review required.")
                                 .confidence(0.0)
                                 .observations(List.of("AI recommendation service unavailable.", "Claim requires manual assessment."))
+                                .build();
+        }
+
+        private RecommendationResult buildPriorAuthorizationFallbackRecommendation() {
+
+                return RecommendationResult.builder()
+                                .recommendation(Recommendation.MANUAL_REVIEW)
+                                .reason("AI recommendation could not be generated. " + "Manual review is required.")
+                                .confidence(0.0)
+                                .observations(List.of("AI recommendation service unavailable.", "Prior authorization request requires manual assessment."))
                                 .build();
         }
 

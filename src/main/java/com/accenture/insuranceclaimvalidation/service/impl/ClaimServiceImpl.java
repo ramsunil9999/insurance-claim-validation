@@ -5,18 +5,26 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.accenture.insuranceclaimvalidation.dto.ClaimAssessmentContext;
 import com.accenture.insuranceclaimvalidation.dto.ClaimDetails;
+import com.accenture.insuranceclaimvalidation.dto.PriorAuthorizationAssessmentContext;
+import com.accenture.insuranceclaimvalidation.dto.PriorAuthorizationDetails;
 import com.accenture.insuranceclaimvalidation.dto.RecommendationResult;
 import com.accenture.insuranceclaimvalidation.dto.ValidationResult;
 import com.accenture.insuranceclaimvalidation.dto.response.FileUploadResponse;
 import com.accenture.insuranceclaimvalidation.entity.Claim;
+import com.accenture.insuranceclaimvalidation.entity.PriorAuthorization;
+import com.accenture.insuranceclaimvalidation.enums.DocumentType;
 import com.accenture.insuranceclaimvalidation.exception.InvalidFileException;
 import com.accenture.insuranceclaimvalidation.mapper.ClaimMapper;
+import com.accenture.insuranceclaimvalidation.mapper.PriorAuthorizationMapper;
 import com.accenture.insuranceclaimvalidation.repository.ClaimRepository;
+import com.accenture.insuranceclaimvalidation.repository.PriorAuthorizationRepository;
 import com.accenture.insuranceclaimvalidation.service.AIRecommendationService;
 import com.accenture.insuranceclaimvalidation.service.AIService;
 import com.accenture.insuranceclaimvalidation.service.ClaimService;
+import com.accenture.insuranceclaimvalidation.service.DocumentClassificationService;
 import com.accenture.insuranceclaimvalidation.service.DocumentProcessingService;
 import com.accenture.insuranceclaimvalidation.service.validation.ClaimValidationService;
+import com.accenture.insuranceclaimvalidation.service.validation.PriorAuthorizationValidationService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,9 +37,13 @@ public class ClaimServiceImpl implements ClaimService {
     private final DocumentProcessingService documentProcessingService;
     private final AIService aiService;
     private final ClaimValidationService claimValidationService;
+    private final PriorAuthorizationValidationService priorAuthorizationValidationService;
     private final ClaimRepository claimRepository;
+    private final PriorAuthorizationRepository priorAuthorizationRepository;
     private final ClaimMapper claimMapper;
+    private final PriorAuthorizationMapper priorAuthorizationMapper;
     private final AIRecommendationService aiRecommendationService;
+    private final DocumentClassificationService documentClassificationService;
 
     @Override
     public FileUploadResponse uploadClaim(MultipartFile file) {
@@ -44,6 +56,14 @@ public class ClaimServiceImpl implements ClaimService {
         String extractedText = documentProcessingService.processDocument(file);
 
         log.info("Document text extracted successfully.");
+
+        DocumentType documentType = documentClassificationService.classify(extractedText);
+
+        log.info("Document classified as {}.", documentType);
+
+        if (documentType == DocumentType.PRIOR_AUTHORIZATION) {
+            return processPriorAuthorizationInternal(file, extractedText);
+        }
 
         return processClaimInternal(file, extractedText);
     }
@@ -112,6 +132,57 @@ public class ClaimServiceImpl implements ClaimService {
                 .message(responseMessage)
                 .extractedText(extractedText)
                 .claimDetails(claimDetails)
+                .validationResult(validationResult)
+                .recommendationResult(recommendationResult)
+                .build();
+    }
+
+    private FileUploadResponse processPriorAuthorizationInternal(MultipartFile file, String extractedText) {
+
+        PriorAuthorizationDetails priorAuthorizationDetails = aiService.extractPriorAuthorizationDetails(extractedText);
+
+        log.info("Prior Authorization details extracted successfully.");
+
+        ValidationResult validationResult = priorAuthorizationValidationService.validate(priorAuthorizationDetails);
+
+        if (!validationResult.isValid()) {
+
+            log.warn("Prior Authorization validation failed.");
+
+            return FileUploadResponse.builder()
+                    .fileName(file.getOriginalFilename())
+                    .contentType(file.getContentType())
+                    .size(file.getSize())
+                    .message("Prior Authorization validation failed.")
+                    .extractedText(extractedText)
+                    .priorAuthorizationDetails(priorAuthorizationDetails)
+                    .validationResult(validationResult)
+                    .build();
+        }
+
+        PriorAuthorizationAssessmentContext context = PriorAuthorizationAssessmentContext.builder()
+                .priorAuthorizationDetails(priorAuthorizationDetails)
+                .validationResult(validationResult)
+                .build();
+        
+        RecommendationResult recommendationResult = aiRecommendationService.recommendPriorAuthorization(context);
+
+        log.info("AI Prior Authorization recommendation generated: {}", recommendationResult.getRecommendation());
+
+        PriorAuthorization priorAuthorization = priorAuthorizationMapper.toEntity(priorAuthorizationDetails);
+        priorAuthorizationMapper.populateAssessmentResult(priorAuthorization, recommendationResult);
+        
+        PriorAuthorization savedPriorAuthorization = priorAuthorizationRepository.save(priorAuthorization);
+        log.info("Prior Authorization saved successfully with ID: {}", savedPriorAuthorization.getId());
+
+        return FileUploadResponse.builder()
+                .claimId(savedPriorAuthorization.getId())
+                .fileName(file.getOriginalFilename())
+                .contentType(file.getContentType())
+                .size(file.getSize())
+                .message("Prior Authorization processed successfully.")
+                .extractedText(extractedText)
+                .priorAuthorizationDetails(priorAuthorizationDetails)
                 .validationResult(validationResult)
                 .recommendationResult(recommendationResult)
                 .build();
