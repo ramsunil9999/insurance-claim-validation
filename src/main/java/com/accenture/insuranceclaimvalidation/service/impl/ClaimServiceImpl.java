@@ -81,6 +81,7 @@ public class ClaimServiceImpl implements ClaimService {
             log.warn("Claim validation failed. Returning validation errors.");
 
             return FileUploadResponse.builder()
+                    .documentType("CLAIM")
                     .fileName(file.getOriginalFilename())
                     .contentType(file.getContentType())
                     .size(file.getSize())
@@ -126,6 +127,7 @@ public class ClaimServiceImpl implements ClaimService {
 
         return FileUploadResponse.builder()
                 .claimId(savedClaim.getId())
+                .documentType("CLAIM")
                 .fileName(file.getOriginalFilename())
                 .contentType(file.getContentType())
                 .size(file.getSize())
@@ -150,6 +152,7 @@ public class ClaimServiceImpl implements ClaimService {
             log.warn("Prior Authorization validation failed.");
 
             return FileUploadResponse.builder()
+                    .documentType("PRIOR AUTHORIZATION")
                     .fileName(file.getOriginalFilename())
                     .contentType(file.getContentType())
                     .size(file.getSize())
@@ -177,6 +180,7 @@ public class ClaimServiceImpl implements ClaimService {
 
         return FileUploadResponse.builder()
                 .claimId(savedPriorAuthorization.getId())
+                .documentType("PRIOR AUTHORIZATION")
                 .fileName(file.getOriginalFilename())
                 .contentType(file.getContentType())
                 .size(file.getSize())

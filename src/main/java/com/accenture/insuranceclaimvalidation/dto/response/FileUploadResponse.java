@@ -18,6 +18,8 @@ public class FileUploadResponse {
 
     private String claimId;
 
+    private String documentType;
+
     private String fileName;
 
     private String contentType;
