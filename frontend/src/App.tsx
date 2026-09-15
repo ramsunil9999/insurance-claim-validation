@@ -38,7 +38,6 @@ const acceptedFileExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.docx'];
 
 const isSupportedFile = (selectedFile: File) => {
   const extension = selectedFile.name.toLowerCase().slice(selectedFile.name.lastIndexOf('.'));
-
   return acceptedFileTypes.includes(selectedFile.type) || acceptedFileExtensions.includes(extension);
 };
 
@@ -141,13 +140,19 @@ export default function App() {
     }
   };
 
+  const isClaim = result?.documentType === 'CLAIM';
+
+  const isPriorAuthorization = result?.documentType === 'PRIOR AUTHORIZATION';
+
+  const recommendation = result?.recommendationResult;
+
   return (
     <div className="page">
       {!result && (
         <div className="hero-panel">
           <div className="hero-copy">
             <span className="eyebrow">Claims & Prior Authorizations Powered by AI</span>
-            <h1>Insurance Document Intelligence Platform</h1>
+            <h1>One intelligent platform for every healthcare decision.</h1>
             <p>
               Upload a Claim or Prior Authorization document and receive AI-powered extraction, validation, recommendation, and automated decision support.
             </p>
@@ -204,103 +209,143 @@ export default function App() {
             </button>
           </div>
 
-          <div className="cards-grid stacked">
-            <article className="detail-card">
-              <h3>Document Overview</h3>
-              <p><strong>File:</strong> {result.fileName}</p>
-              <p><strong>Record ID:</strong> {result.claimId || 'Pending'}</p>
-              <p><strong>Document Type:</strong> {result.documentType === 'CLAIM' ? 'Claim' : result.documentType === 'PRIOR AUTHORIZATION' ? 'Prior Authorization' : 'N/A'}</p>
-              <p><strong>Type:</strong> {result.contentType || 'PDF Upload'}</p>
-              <p><strong>Size:</strong> {Math.round(result.size / 1024)} KB</p>
-              <p><strong>Status:</strong> {result.message}</p>
-            </article>
+          <section className="score-strip">
+            <div>
+              <span>Recommendation</span>
+              <strong
+                className={recommendation?.recommendation === 'APPROVED' ? 'decision-approved'
+                  : recommendation?.recommendation === 'REJECTED' ? 'decision-rejected' : recommendation?.recommendation === 'MANUAL_REVIEW' ? 'decision-review' : 'decision-pending'
+                } > {recommendation?.recommendation === 'APPROVED' ? '✅ Approved' : recommendation?.recommendation === 'REJECTED' ? '❌ Rejected' : recommendation?.recommendation === 'MANUAL_REVIEW' ? '⚠️ Manual Review' : '⏳ Pending Assessment'}
+              </strong>
+            </div>
 
-            {result.recommendationResult && (
-              <article className="detail-card accent-card">
-                <h3>Recommendation</h3>
-                <p className="big-text">{result.recommendationResult.recommendation}</p>
-                <p>{result.recommendationResult.reason}</p>
-                <p><strong>Confidence:</strong> {(result.recommendationResult.confidence * 100).toFixed(0)}%</p>
-                <ul>
-                  {result.recommendationResult.observations.map((obs) => (
-                    <li key={obs}>{obs}</li>
-                  ))}
-                </ul>
-              </article>
-            )}
+            <div>
+              <span>Confidence</span>
+              <strong>{recommendation ? `${(recommendation.confidence * 100).toFixed(0)}%` : 'N/A'}</strong>
+            </div>
 
-            {result.validationResult && (
-              <article className={`detail-card ${result.validationResult.valid ? 'success' : 'warning'}`}>
-                <h3>Validation</h3>
-                <p><strong>Status:</strong> {result.validationResult.valid ? 'Valid' : 'Issues found'}</p>
-                {result.validationResult.errors.length > 0 ? (
-                  <ul>
-                    {result.validationResult.errors.map((err) => (
-                      <li key={err}>{err}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No validation issues detected.</p>
+            <div>
+              <span>Document Type</span>
+              <strong>{isClaim ? '📄 Claim' : '🏥 Prior Authorization'}</strong>
+            </div>
+          </section>
+
+          <div className="review-layout">
+            <div className="primary-review">
+              <article className="detail-card case-card">
+                <h3>Case Summary</h3>
+                {isClaim && result.claimDetails && (
+                  <>
+                    <p><strong>Patient Name:</strong>{' '}
+                      {String(result.claimDetails.patientName ?? 'N/A')}
+                    </p>
+                    <p><strong>Policy Number:</strong>{' '}
+                      {String(result.claimDetails.policyNumber ?? 'N/A')}
+                    </p>
+                    <p><strong>Diagnosis:</strong>{' '}
+                      {String(result.claimDetails.diagnosis ?? 'N/A')}
+                    </p>
+                    <p><strong>Hospital:</strong>{' '}
+                      {String(result.claimDetails.hospitalName ?? 'N/A')}
+                    </p>
+                    <p><strong>Claim Amount:</strong>{' '}
+                      ${String(result.claimDetails.claimAmount ?? 'N/A')}
+                    </p>
+                  </>
                 )}
+
+                {isPriorAuthorization &&
+                  result.priorAuthorizationDetails && (
+                    <>
+                      <p><strong>Patient Name:</strong>{' '}
+                        {String(result.priorAuthorizationDetails.patientName ?? 'N/A')}
+                      </p>
+
+                      <p><strong>Policy Number:</strong>{' '}
+                        {String(result.priorAuthorizationDetails.policyNumber ?? 'N/A')}
+                      </p>
+
+                      <p><strong>Diagnosis:</strong>{' '}
+                        {String(result.priorAuthorizationDetails.primaryDiagnosis ?? 'N/A')}
+                      </p>
+
+                      <p><strong>Requested Procedure:</strong>{' '}
+                        {String(result.priorAuthorizationDetails.requestedProcedure ?? 'N/A')}
+                      </p>
+
+                      <p><strong>Estimated Cost:</strong>{' '}
+                        ${String(result.priorAuthorizationDetails.estimatedCost ?? 'N/A')}
+                      </p>
+                    </>
+                  )}
               </article>
-            )}
 
-            {result.documentType === 'CLAIM' && result.claimDetails && (
-              <article className="detail-card">
-                <h3>Extracted Details</h3>
-                <p><strong>Patient Name:</strong>{' '}
-                  {String(result.claimDetails.patientName ?? 'N/A')}
-                </p>
-
-                <p><strong>Policy Number:</strong>{' '}
-                  {String(result.claimDetails.policyNumber ?? 'N/A')}
-                </p>
-
-                <p><strong>Diagnosis:</strong>{' '}
-                  {String(result.claimDetails.diagnosis ?? 'N/A')}
-                </p>
-
-                <p><strong>Hospital Name:</strong>{' '}
-                  {String(result.claimDetails.hospitalName ?? 'N/A')}
-                </p>
-
-                <p><strong>Claim Amount: </strong>{' $'}
-                  {String(result.claimDetails.claimAmount ?? 'N/A')}
-                </p>
+              <article className="detail-card accent-card decision-card">
+                <h3>Decision Summary</h3>
+                {result.recommendationResult ? (
+                  <>
+                    <div className={recommendation?.recommendation === 'APPROVED' ? 'decision-approved'
+                      : recommendation?.recommendation === 'REJECTED' ? 'decision-rejected' : recommendation?.recommendation === 'MANUAL_REVIEW' ? 'decision-review' : 'decision-pending'}
+                    > {recommendation?.recommendation === 'APPROVED' ? '✅ Approved'
+                      : recommendation?.recommendation === 'REJECTED' ? '❌ Rejected' : recommendation?.recommendation === 'MANUAL_REVIEW' ? '⚠️ Manual Review' : '⏳ Pending Assessment'}
+                    </div>
+                    <p>{result.recommendationResult.reason}</p>
+                    <p><strong>Confidence:</strong> {(result.recommendationResult.confidence * 100).toFixed(0)}%</p>
+                    <ul>
+                      {result.recommendationResult.observations.map((obs) => (
+                        <li key={obs}>{obs}</li>
+                      ))}
+                    </ul>
+                  </>)
+                  : (
+                    <>
+                      <div className="decision-pending">⏳ Pending Assessment </div>
+                      <p> Recommendation could not be generated because the uploaded document did not pass validation.</p>
+                      <h4>Required Action</h4>
+                      <ul>
+                        <li>Review the validation errors shown in the validation summary card.</li>
+                        <li>Correct missing or invalid fields.</li>
+                        <li>Upload the updated document.</li>
+                      </ul>
+                    </>
+                  )}
               </article>
-            )}
+            </div>
+            <div className="secondary-review">
+              <article className="detail-card support-card">
+                <h3>Document Information</h3>
+                <p><strong>File:</strong> {result.fileName}</p>
+                <p><strong>Record ID:</strong> {result.claimId || 'Pending'}</p>
+                <p><strong>Document Type:</strong> {isClaim ? 'Claim' : 'Prior Authorization'}</p>
+                <p><strong>File Type:</strong> {result.contentType}</p>
+                <p><strong>Size:</strong> {Math.round(result.size / 1024)} KB</p>
+                <p><strong>Status:</strong>{result.message}</p>
+              </article>
 
-            {result.documentType === 'PRIOR AUTHORIZATION' && result.priorAuthorizationDetails && (
-                <article className="detail-card">
-                  <h3>Extracted Details</h3>
-                  <p><strong>Patient Name:</strong>{' '}
-                    {String(result.priorAuthorizationDetails.patientName ?? 'N/A')}
-                  </p>
-
-                  <p><strong>Policy Number:</strong>{' '}
-                    {String(result.priorAuthorizationDetails.policyNumber ?? 'N/A')}
-                  </p>
-
-                  <p><strong>Primary Diagnosis:</strong>{' '}
-                    {String(result.priorAuthorizationDetails.primaryDiagnosis ?? 'N/A')}
-                  </p>
-
-                  <p><strong>Requested Procedure:</strong>{' '}
-                    {String(result.priorAuthorizationDetails.requestedProcedure ?? 'N/A')}
-                  </p>
-
-                  <p><strong>Procedure Category:</strong>{' '}
-                    {String(result.priorAuthorizationDetails.procedureCategory ?? 'N/A')}
-                  </p>
-
-                  <p><strong>Estimated Cost: </strong>{' $'}
-                    {String(result.priorAuthorizationDetails.estimatedCost ?? 'N/A')}
-                  </p>
+              {result.validationResult && (
+                <article className={`detail-card support-card ${result.validationResult.valid ? 'success' : 'warning'}`}>
+                  <h3>Validation Summary</h3>
+                  <div
+                    className={result.validationResult.valid ? 'validation-passed' : 'validation-failed'}
+                  > {result.validationResult.valid ? '✅ Validation Passed' : '⚠️ Validation Failed'}
+                  </div>
+                  {result.validationResult.valid ? 'All details are Valid' : 'Issues found'}
+                  {result.validationResult.errors.length > 0 ? (
+                    <ul>
+                      {result.validationResult.errors.map((err) => (
+                        <li key={err}>{err}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No validation issues detected.</p>
+                  )}
                 </article>
               )}
+            </div>
           </div>
         </section>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 }
