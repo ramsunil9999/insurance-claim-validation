@@ -154,6 +154,14 @@ public class AIRecommendationServiceImpl implements AIRecommendationService {
                         result.setObservations(List.of());
                 }
 
+                if (result.getPolicySources() == null) {
+                        result.setPolicySources(List.of());
+                }
+
+                if (result.getSupportingEvidence() == null) {
+                        result.setSupportingEvidence(List.of());
+                }
+
                 if (result.getConfidence() == null) {
                         result.setConfidence(0.50);
                 } else {

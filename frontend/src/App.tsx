@@ -6,6 +6,8 @@ type RecommendationResult = {
   reason: string;
   confidence: number;
   observations: string[];
+  policySources?: string[];
+  supportingEvidence?: string[];
 };
 
 type ValidationResult = {
@@ -296,6 +298,32 @@ export default function App() {
                         <li key={obs}>{obs}</li>
                       ))}
                     </ul>
+
+                    {result.recommendationResult.policySources && result.recommendationResult.policySources.length > 0 && (
+                      <div className="policy-section">
+                        <h4>Policy Sources</h4>
+                        <ul>
+                          {result.recommendationResult.policySources.map(
+                            (source) => (
+                              <li key={source}>{source}</li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
+
+                    {result.recommendationResult.supportingEvidence && result.recommendationResult.supportingEvidence.length > 0 && (
+                      <div className="policy-section">
+                        <h4>Supporting Evidence</h4>
+                        <ul>
+                          {result.recommendationResult.supportingEvidence.map(
+                            (evidence) => (
+                              <li key={evidence}>{evidence}</li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
                   </>)
                   : (
                     <>

@@ -23,6 +23,7 @@ import com.accenture.insuranceclaimvalidation.service.AIService;
 import com.accenture.insuranceclaimvalidation.service.ClaimService;
 import com.accenture.insuranceclaimvalidation.service.DocumentClassificationService;
 import com.accenture.insuranceclaimvalidation.service.DocumentProcessingService;
+import com.accenture.insuranceclaimvalidation.service.policy.PolicyIntelligenceService;
 import com.accenture.insuranceclaimvalidation.service.validation.ClaimValidationService;
 import com.accenture.insuranceclaimvalidation.service.validation.PriorAuthorizationValidationService;
 
@@ -44,6 +45,7 @@ public class ClaimServiceImpl implements ClaimService {
     private final PriorAuthorizationMapper priorAuthorizationMapper;
     private final AIRecommendationService aiRecommendationService;
     private final DocumentClassificationService documentClassificationService;
+    private final PolicyIntelligenceService policyIntelligenceService;
 
     @Override
     public FileUploadResponse uploadClaim(MultipartFile file) {
@@ -98,10 +100,25 @@ public class ClaimServiceImpl implements ClaimService {
                 claimDetails.getDiagnosis(),
                 claimDetails.getAdmissionDate());
 
+        String policyQuery = String.format(
+                """
+                    Diagnosis: %s
+
+                    Procedure: %s
+
+                    Hospital Type: %s
+
+                    Review insurance coverage requirements
+                """,
+                claimDetails.getDiagnosis(), claimDetails.getProcedurePerformed(), claimDetails.getHospitalType());
+
+        String policyContext = policyIntelligenceService.retrievePolicyContext(policyQuery);
+
         ClaimAssessmentContext context = ClaimAssessmentContext.builder()
                 .claimDetails(claimDetails)
                 .validationResult(validationResult)
                 .duplicateClaim(duplicate)
+                .policyContext(policyContext)
                 .build();
 
         RecommendationResult recommendationResult = aiRecommendationService.recommendClaim(context);
@@ -163,18 +180,36 @@ public class ClaimServiceImpl implements ClaimService {
                     .build();
         }
 
+        String policyQuery = String.format(
+                """
+                    Diagnosis: %s
+
+                    Requested Procedure: %s
+
+                    Procedure Category: %s
+
+                    Medical Necessity review requirements
+                """,
+                priorAuthorizationDetails.getPrimaryDiagnosis(), priorAuthorizationDetails.getRequestedProcedure(), priorAuthorizationDetails.getProcedureCategory()
+            );
+
+        String policyContext = policyIntelligenceService.retrievePolicyContext(policyQuery);
+
+        log.info("Retrieved Policy Context:\n{}", policyContext);
+
         PriorAuthorizationAssessmentContext context = PriorAuthorizationAssessmentContext.builder()
                 .priorAuthorizationDetails(priorAuthorizationDetails)
                 .validationResult(validationResult)
+                .policyContext(policyContext)
                 .build();
-        
+
         RecommendationResult recommendationResult = aiRecommendationService.recommendPriorAuthorization(context);
 
         log.info("AI Prior Authorization recommendation generated: {}", recommendationResult.getRecommendation());
 
         PriorAuthorization priorAuthorization = priorAuthorizationMapper.toEntity(priorAuthorizationDetails);
         priorAuthorizationMapper.populateAssessmentResult(priorAuthorization, recommendationResult);
-        
+
         PriorAuthorization savedPriorAuthorization = priorAuthorizationRepository.save(priorAuthorization);
         log.info("Prior Authorization saved successfully with ID: {}", savedPriorAuthorization.getId());
 

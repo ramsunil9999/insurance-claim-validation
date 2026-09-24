@@ -14,4 +14,6 @@ public class PriorAuthorizationAssessmentContext {
     private PriorAuthorizationDetails priorAuthorizationDetails;
 
     private ValidationResult validationResult;
+
+    private String policyContext;
 }

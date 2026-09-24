@@ -25,4 +25,8 @@ public class RecommendationResult {
 
     private List<String> observations;
 
+    private List<String> policySources;
+
+    private List<String> supportingEvidence;
+
 }

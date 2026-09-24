@@ -17,4 +17,6 @@ public class ClaimAssessmentContext {
 
     private boolean duplicateClaim;
 
+    private String policyContext;
+
 }

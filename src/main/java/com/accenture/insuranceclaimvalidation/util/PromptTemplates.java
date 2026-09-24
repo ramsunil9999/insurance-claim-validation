@@ -199,7 +199,15 @@ public final class PromptTemplates {
                 Evaluate the ENTIRE claim.
                 Never base your decision on only one field.
                 Always consider the complete medical story.
-                When uncertain, prefer MANUAL_REVIEW instead of REJECTED.
+                Use retrieved policy evidence whenever available.
+                Give higher weight to policy evidence than general assumptions.
+                If policy evidence conflicts with assumptions, follow the policy evidence.
+                If policy evidence is insufficient, prefer MANUAL_REVIEW.
+                Do not treat a single policy trigger as automatic justification for MANUAL_REVIEW.
+                Evaluate the entire claim before making a decision.
+                A single documentation gap or provider mismatch alone should not automatically trigger MANUAL_REVIEW if the overall clinical story remains strong.
+                Use policy evidence as guidance, not as a rigid rules engine.
+                Consider diagnosis, treatment, hospitalization, supporting evidence, specialty alignment, financial data, and policy evidence together.
 
                 -------------------------------------------------------
                 MEDICAL CONSISTENCY
@@ -338,6 +346,11 @@ public final class PromptTemplates {
                 Duplicate Claim : %s
 
                 -------------------------------------------------------
+                POLICY EVIDENCE
+                -------------------------------------------------------
+                %s
+
+                -------------------------------------------------------
                 DECISION RULES
                 -------------------------------------------------------
                 APPROVED
@@ -363,6 +376,11 @@ public final class PromptTemplates {
                 • diagnosis and treatment are clearly contradictory
                 • multiple serious inconsistencies exist
 
+                POLICY SOURCE ATTRIBUTION
+                • policySources: List the policy documents that influenced your decision.
+                • supportingEvidence: List the specific rules, requirements, or policy evidence that affected the recommendation.
+                • Keep supportingEvidence concise.
+
                 -------------------------------------------------------
                 OUTPUT
                 -------------------------------------------------------
@@ -378,6 +396,14 @@ public final class PromptTemplates {
                         "...",
                         "...",
                         "..."
+                    ],
+                    "policySources":[
+                        "Policy Name"
+                    ],
+                    "supportingEvidence":[
+                        "Evidence 1",
+                        "Evidence 2",
+                        "Evidence 3"
                     ]
                 }
                 """
@@ -447,7 +473,12 @@ public final class PromptTemplates {
                         // Validation
                         // ===========================
                         context.getValidationResult().isValid(),
-                        context.isDuplicateClaim());
+                        context.isDuplicateClaim(),
+
+                        // ===========================
+                        // Policy Evidence
+                        // ===========================
+                        context.getPolicyContext());
     }
 
     public static String buildPriorAuthorizationRecommendationPrompt(PriorAuthorizationAssessmentContext context) {
@@ -463,7 +494,15 @@ public final class PromptTemplates {
                 -------------------------------------------------------
                 - Evaluate the entire authorization request.
                 - Never make decisions using only one field.
-                - Prefer MANUAL_REVIEW when uncertainty exists.
+                - Use the retrieved policy evidence whenever available.
+                - Give higher weight to policy evidence than general assumptions.
+                - If policy evidence conflicts with assumptions, follow the policy evidence.
+                - If policy evidence is insufficient or uncertainty exists, prefer MANUAL_REVIEW.
+                - Do not treat a single policy trigger as automatic justification for MANUAL_REVIEW.
+                - Evaluate the complete authorization request before making a decision.
+                - A provider specialty mismatch alone should not trigger MANUAL_REVIEW if the diagnosis, procedure, supporting documents, and medical necessity remain clinically coherent.
+                - Use policy evidence as guidance, not as a rigid rules engine.
+                - Consider diagnosis, procedure, medical necessity, prior treatment history, supporting documents, provider specialty, facility setting, and policy evidence together.
 
                 -------------------------------------------------------
                 MEDICAL NECESSITY
@@ -540,6 +579,11 @@ public final class PromptTemplates {
                 Validation Passed : %s
 
                 -------------------------------------------------------
+                POLICY EVIDENCE
+                -------------------------------------------------------
+                %s
+
+                -------------------------------------------------------
                 DECISION RULES
                 -------------------------------------------------------
                 APPROVED
@@ -562,6 +606,11 @@ public final class PromptTemplates {
                 • strong evidence exists that procedure is medically unnecessary
                 • multiple severe inconsistencies exist
 
+                POLICY SOURCE ATTRIBUTION
+                • policySources: List the policy documents that influenced your decision.
+                • supportingEvidence: List the specific rules, requirements, or policy evidence that affected the recommendation.
+                • Keep supportingEvidence concise.
+                
                 -------------------------------------------------------
                 OUTPUT
                 -------------------------------------------------------
@@ -577,6 +626,14 @@ public final class PromptTemplates {
                         "...",
                         "...",
                         "..."
+                    ],
+                    "policySources":[
+                        "Policy Name"
+                    ],
+                    "supportingEvidence":[
+                        "Evidence 1",
+                        "Evidence 2",
+                        "Evidence 3"
                     ]
                 }
                 """
@@ -624,7 +681,9 @@ public final class PromptTemplates {
 
                         priorAuth.getMissingDocuments(),
 
-                        context.getValidationResult().isValid()
+                        context.getValidationResult().isValid(),
+
+                        context.getPolicyContext()
                     );
     }
 }
